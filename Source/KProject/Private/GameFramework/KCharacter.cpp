@@ -30,5 +30,59 @@ void AKCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	PlayerInputComponent->BindAxis("MoveForward", this, &ThisClass::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &ThisClass::MoveRight);
+	PlayerInputComponent->BindAxis("LookUp", this, &ThisClass::LookUp);
+	PlayerInputComponent->BindAxis("LookRight", this, &ThisClass::LookRight);
+
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ThisClass::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ThisClass::StopJumping);
+	PlayerInputComponent->BindAction("Use", IE_Pressed, this, &ThisClass::Use);
 }
 
+//////////////////////////////////////////////////////////////////////////
+// Input functions
+
+void AKCharacter::MoveForward(float Value)
+{
+	if (Value != 0)
+	{
+		FVector MovementDirection = GetControlRotation().Vector();
+		MovementDirection.SetComponentForAxis(EAxis::Z, 0);
+		MovementDirection.Normalize();
+		AddMovementInput(MovementDirection, Value);
+	}
+}
+
+void AKCharacter::MoveRight(float Value)
+{
+	if (Value != 0)
+	{
+		FVector MovementDirection = GetControlRotation().Vector();
+		MovementDirection = MovementDirection.RotateAngleAxis(90, FVector::UpVector);
+		MovementDirection.SetComponentForAxis(EAxis::Z, 0);
+		MovementDirection.Normalize();
+		AddMovementInput(MovementDirection, Value);
+	}
+}
+
+void AKCharacter::LookUp(float Value)
+{
+	if (Value != 0)
+	{
+		AddControllerPitchInput(Value);
+	}
+}
+
+void AKCharacter::LookRight(float Value)
+{
+	if (Value != 0)
+	{
+		AddControllerYawInput(Value);
+	}
+}
+
+void AKCharacter::Use()
+{
+
+}
