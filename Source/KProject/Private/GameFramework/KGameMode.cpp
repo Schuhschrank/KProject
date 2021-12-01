@@ -160,19 +160,23 @@ void AKGameMode::HandlePlayerDeath(AController* DeadPlayer)
 		return;
 	}
 
+	AKPlayerState* PS = Cast<AKPlayerState>(DeadPlayer->PlayerState);
+
+	if (PS && (PS->bIsGhost || PS->PlayerRole == EPlayerRole::NotParticipating))
+	{
+		// Player is already dead
+		return;
+	}
+
 	if (!GetMortality())
 	{
 		RestartPlayer(DeadPlayer);
 		return;
 	}
 
+	if (PS)
 	{
-		APlayerController* PC = Cast<APlayerController>(DeadPlayer);
-		if (PC && PC->GetSpectatorPawn())
-		{
-			// Player is already dead
-			return;
-		}
+		PS->bIsGhost = true;
 	}
 
 	MakePlayerSpectate(DeadPlayer);

@@ -60,7 +60,7 @@ protected:
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "KGame")
-	virtual void HandlePlayerDeath(AController* DeadPlayer);
+	void HandlePlayerDeath(AController* DeadPlayer);
 
 protected:
 

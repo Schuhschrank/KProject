@@ -19,9 +19,11 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Replicated)
 	EPlayerRole PlayerRole;
+
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsGhost;
 	
 	void Reset() override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 };

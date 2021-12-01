@@ -4,12 +4,12 @@
 #include "GameFramework/KPlayerState.h"
 #include "Net/UnrealNetwork.h"
 
-
 void AKPlayerState::Reset()
 {
 	Super::Reset();
 
 	PlayerRole = EPlayerRole::NotParticipating;
+	bIsGhost = false;
 }
 
 void AKPlayerState::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
