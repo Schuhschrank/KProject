@@ -3,6 +3,8 @@
 
 #include "NonGameplay/KOnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
+// #include "OnlineSubsystem.h"
+// #include "OnlineSessionSettings.h"
 
 UKOnlineSubsystem::UKOnlineSubsystem()
 	: CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnCreateSessionCompleted))
@@ -12,6 +14,7 @@ UKOnlineSubsystem::UKOnlineSubsystem()
 	, DestroySessionCompleteDelegate(FOnDestroySessionCompleteDelegate::CreateUObject(this, &ThisClass::OnDestroySessionCompleted))
 	, FindSessionsCompleteDelegate(FOnFindSessionsCompleteDelegate::CreateUObject(this, &ThisClass::OnFindSessionsCompleted))
 	, JoinSessionCompleteDelegate(FOnJoinSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnJoinSessionCompleted))
+	// , OnFindFriendSessionCompleteDelegate(FOnFindFriendSessionCompleteDelegate::CreateUObject(this, ))
 {
 }
 
@@ -25,19 +28,23 @@ void UKOnlineSubsystem::CreateSession(int32 NumPublicConnections, bool IsLANMatc
 	}
 
 	LastSessionSettings = MakeShareable(new FOnlineSessionSettings());
+
 	LastSessionSettings->NumPrivateConnections = 0;
 	LastSessionSettings->NumPublicConnections = NumPublicConnections;
+	LastSessionSettings->bIsLANMatch = IsLANMatch;
+
 	LastSessionSettings->bAllowInvites = true;
 	LastSessionSettings->bAllowJoinInProgress = true;
 	LastSessionSettings->bAllowJoinViaPresence = true;
-	LastSessionSettings->bAllowJoinViaPresenceFriendsOnly = true;
-	LastSessionSettings->bIsDedicated = false;
 	LastSessionSettings->bUsesPresence = true;
 	LastSessionSettings->bUseLobbiesIfAvailable = true;
-	LastSessionSettings->bIsLANMatch = IsLANMatch;
 	LastSessionSettings->bShouldAdvertise = true;
 
-	LastSessionSettings->Set(SETTING_MAPNAME, FString("Your Level Name"), EOnlineDataAdvertisementType::ViaOnlineService);
+	LastSessionSettings->bAllowJoinViaPresenceFriendsOnly = false;
+	LastSessionSettings->bAntiCheatProtected = false;
+	LastSessionSettings->bIsDedicated = false;
+
+	// LastSessionSettings->Set(SETTING_MAPNAME, FString("Your Level Name"), EOnlineDataAdvertisementType::ViaOnlineService);
 
 	CreateSessionCompleteDelegateHandle = sessionInterface->AddOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegate);
 

@@ -83,6 +83,7 @@ protected:
 	void OnDestroySessionCompleted(FName SessionName, bool Successful);
 	void OnFindSessionsCompleted(bool Successful);
 	void OnJoinSessionCompleted(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+	// void OnFindFriendSessionCompleted();
 
 public:
 
@@ -113,4 +114,6 @@ private:
 
 	FOnJoinSessionCompleteDelegate JoinSessionCompleteDelegate;
 	FDelegateHandle JoinSessionCompleteDelegateHandle;
+
+	// FOnFindFriendSessionCompleteDelegate OnFindFriendSessionCompleteDelegate;
 };
