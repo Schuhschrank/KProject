@@ -3,12 +3,17 @@
 
 #include "GameFramework/KGameMode.h"
 #include "Math/UnrealMathUtility.h"
-#include "GameFramework/PlayerController.h"
-#include "GameFramework/PlayerState.h"
 #include "GameFramework/KPlayerState.h"
 #include "GameFramework/KPlayerController.h"
 #include "GameFramework/GameSession.h"
 #include "GameFramework/SpectatorPawn.h"
+#include "GameFramework/KGameState.h"
+
+DEFINE_LOG_CATEGORY(LogKGameMode);
+
+constexpr auto StrInnocentsWon = "The Innocents have won! All Traitors are dead.";
+constexpr auto StrTraitorsWon = "The Traitors have won! All Innocents and Detectives are dead.";
+constexpr auto StrMatchAborted = "The Match has been aborted.";
 
 AKGameMode::AKGameMode(const FObjectInitializer& ObjectInitializer)
 	: AGameMode(ObjectInitializer)
@@ -16,25 +21,37 @@ AKGameMode::AKGameMode(const FObjectInitializer& ObjectInitializer)
 	// GameModeBase
 	PlayerControllerClass = AKPlayerController::StaticClass();
 	PlayerStateClass = AKPlayerState::StaticClass();
+	GameStateClass = AKGameState::StaticClass();
 	bStartPlayersAsSpectators = true;
 
 	// GameMode
 	bDelayedStart = true;
 
 	// KGameMode
-	RoleCounts = { 0, 0, 0, 0 };
-	AliveRoleCounts = { 0, 0, 0, 0 };
 	bArePlayersMortal = false;
-	bHaveTraitorsWon = false;
-	EndMatchReason = FText::GetEmpty();
+}
+
+void AKGameMode::HandleMatchIsWaitingToStart()
+{
+	Super::HandleMatchIsWaitingToStart();
+
+	OnHandleMatchIsWaitingToStart();
 }
 
 void AKGameMode::HandleMatchHasStarted()
 {
-	DistributeRoles();
-	SetMortality(true);
 	Super::HandleMatchHasStarted();
-	RestartAllPlayers();
+
+	OnHandleMatchHasStarted();
+}
+
+void AKGameMode::SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
+{
+	auto GS = GetGameState<AKGameState>();
+	if (GS)
+	{
+		GS->SetEndMatchInfo(InEndMatchReason, bInHaveTraitorsWon);
+	}
 }
 
 bool AKGameMode::ShouldEndMatch()
@@ -44,17 +61,16 @@ bool AKGameMode::ShouldEndMatch()
 		return false;
 	}
 
-	if (AliveRoleCounts[(int32)EPlayerRole::Innocent]
-		+ AliveRoleCounts[(int32)EPlayerRole::Detective] <= 0)
+	if ( GetAliveRoleCount(EPlayerRole::Innocent) + GetAliveRoleCount(EPlayerRole::Detective) <= 0)
 	{
-		EndMatchReason = FText::FromString(FString("All Innocent and Detectives have died."));
-		bHaveTraitorsWon = true;
+		SetEndMatchInfo(FText::FromString(FString(StrTraitorsWon)), true);
+
 		return true;
 	}
-	else if (AliveRoleCounts[(int32)EPlayerRole::Traitor] <= 0)
+	else if (GetAliveRoleCount(EPlayerRole::Traitor) /* AliveRoleCounts[(int32)EPlayerRole::Traitor] */ <= 0)
 	{
-		EndMatchReason = FText::FromString(FString("All Traitors have died."));
-		bHaveTraitorsWon = false;
+		SetEndMatchInfo(FText::FromString(FString(StrInnocentsWon)), false);
+
 		return true;
 	}
 
@@ -65,25 +81,30 @@ void AKGameMode::HandleMatchHasEnded()
 {
 	Super::HandleMatchHasEnded();
 
-	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::RestartGame);
+	// GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::RestartGame);
+
+	OnHandleMatchHasEnded();
 }
 
-void AKGameMode::MyEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
+void AKGameMode::NewEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
 {
-	EndMatchReason = InEndMatchReason;
-	bHaveTraitorsWon = bInHaveTraitorsWon;
-
-	Super::EndMatch();
+	SetEndMatchInfo(InEndMatchReason, bInHaveTraitorsWon);
+	EndMatch();
 }
 
-void AKGameMode::AbortMatch()
+void AKGameMode::HandleMatchAborted()
 {
-	EndMatchReason = FText::FromString(FString("The Match has been aborted."));
-	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::RestartGame);
+	SetEndMatchInfo(FText::FromString(FString(StrMatchAborted)), false);
+
+	// GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::RestartGame);
+
+	OnHandleMatchAborted();
 }
 
 void AKGameMode::RestartGame()
 {
+	UE_LOG(LogKGameMode, Display, TEXT("Begin restarting game."));
+
 	if (GameSession->CanRestartGame())
 	{
 		if (GetMatchState() == MatchState::LeavingMap)
@@ -93,6 +114,8 @@ void AKGameMode::RestartGame()
 
 		// GetWorld()->ServerTravel("?Restart", GetTravelType());
 		ResetLevel();
+
+		OnRestartGame();
 	}
 }
 
@@ -102,6 +125,8 @@ void AKGameMode::RestartAllPlayers()
 	{
 		RestartPlayer(It->Get());
 	}
+
+	UE_LOG(LogKGameMode, Display, TEXT("Restarted all players."));
 }
 
 void AKGameMode::DistributeRoles(int32 NumTraitors, int32 NumDetectives)
@@ -142,15 +167,7 @@ void AKGameMode::DistributeRoles(int32 NumTraitors, int32 NumDetectives)
 		}
 	}
 
-	RoleCounts[(int32)EPlayerRole::NotParticipating] = 0;
-	RoleCounts[(int32)EPlayerRole::Traitor] = NumTraitors;
-	RoleCounts[(int32)EPlayerRole::Innocent] = TotalPlayers - NumTraitors - NumDetectives;
-	RoleCounts[(int32)EPlayerRole::Detective] = NumDetectives;
-
-	AliveRoleCounts[(int32)EPlayerRole::NotParticipating] = 0;
-	AliveRoleCounts[(int32)EPlayerRole::Traitor] = NumTraitors;
-	AliveRoleCounts[(int32)EPlayerRole::Innocent] = TotalPlayers - NumTraitors - NumDetectives;
-	AliveRoleCounts[(int32)EPlayerRole::Detective] = NumDetectives;
+	UE_LOG(LogKGameMode, Display, TEXT("Distributed roles."));
 }
 
 void AKGameMode::HandlePlayerDeath(AController* DeadPlayer)
@@ -162,17 +179,19 @@ void AKGameMode::HandlePlayerDeath(AController* DeadPlayer)
 
 	AKPlayerState* PS = Cast<AKPlayerState>(DeadPlayer->PlayerState);
 
-	if (PS && (PS->bIsGhost || PS->PlayerRole == EPlayerRole::NotParticipating))
+	if (PS && (PS->bIsGhost || PS->GetPlayerRole() == EPlayerRole::NotParticipating))
 	{
 		// Player is already dead
 		return;
 	}
 
-	if (!GetMortality())
+	if (!ArePlayersMortal())
 	{
 		RestartPlayer(DeadPlayer);
 		return;
 	}
+
+	// Register player as dead
 
 	if (PS)
 	{
@@ -181,7 +200,7 @@ void AKGameMode::HandlePlayerDeath(AController* DeadPlayer)
 
 	MakePlayerSpectate(DeadPlayer);
 
-	--AliveRoleCounts[(int32)GetPlayerRole(DeadPlayer)];
+	UE_LOG( LogKGameMode, Display, TEXT("Handled death of player %s."), (DeadPlayer->PlayerState) ? *( DeadPlayer->PlayerState->GetPlayerName() ) : TEXT("unknown") );
 
 	if (ShouldEndMatch())
 	{
@@ -200,6 +219,8 @@ void AKGameMode::MakePlayerSpectate(AController* NewSpectator)
 			// GetPawn() gets unpossessed
 			PC->ChangeState(NAME_Spectating);
 			PC->ClientGotoState(NAME_Spectating);
+
+			UE_LOG( LogKGameMode, Display, TEXT("Made player %s a spectator."), ( PC->PlayerState ) ? *( PC->PlayerState->GetPlayerName() ) : TEXT("unknown") );
 		}
 	}
 }
@@ -211,22 +232,52 @@ void AKGameMode::SetPlayerRole(AController* Player, EPlayerRole NewRole)
 		AKPlayerState* PlayerState = Cast<AKPlayerState>(Player->PlayerState);
 		if (PlayerState)
 		{
-			PlayerState->PlayerRole = NewRole;
+			PlayerState->SetPlayerRole(NewRole);
+
+			UE_LOG( LogKGameMode, Display, TEXT("Assigned role %d to player %s."), (int32)NewRole, *( PlayerState->GetPlayerName() ) );
 		}
 	}
 }
 
-EPlayerRole AKGameMode::GetPlayerRole(AController* Player)
+EPlayerRole AKGameMode::GetPlayerRole(AController* Player) const
 {
 	if (Player && Player->PlayerState)
 	{
 		AKPlayerState* PlayerState = Cast<AKPlayerState>(Player->PlayerState);
 		if (PlayerState)
 		{
-			return PlayerState->PlayerRole;
+			return PlayerState->GetPlayerRole();
 		}
 	}
 	return EPlayerRole::NotParticipating;
+}
+
+int32 AKGameMode::GetRoleCount(EPlayerRole InRole) const
+{
+	int32 Total = 0;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		auto PS = Cast<AKPlayerState>(It->Get()->PlayerState);
+		if (PS && PS->GetPlayerRole() == InRole)
+		{
+			++Total;
+		}
+	}
+	return Total;
+}
+
+int32 AKGameMode::GetAliveRoleCount(EPlayerRole InRole) const
+{
+	int32 Total = 0;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		auto PS = Cast<AKPlayerState>(It->Get()->PlayerState);
+		if (PS && PS->GetPlayerRole() == InRole && !PS->bIsGhost)
+		{
+			++Total;
+		}
+	}
+	return Total;
 }
 
 void AKGameMode::Tick(float DeltaSeconds)
@@ -238,9 +289,7 @@ void AKGameMode::Reset()
 {
 	Super::Reset();
 
-	bHaveTraitorsWon = false;
-	EndMatchReason = FText::GetEmpty();
-	SetMortality(false);
+	SetArePlayersMortal(false);
 
 	SetMatchState(MatchState::WaitingToStart);
 }

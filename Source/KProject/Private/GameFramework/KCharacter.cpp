@@ -30,14 +30,17 @@ void AKCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAxis("MoveForward", this, &ThisClass::MoveForward);
-	PlayerInputComponent->BindAxis("MoveRight", this, &ThisClass::MoveRight);
-	PlayerInputComponent->BindAxis("LookUp", this, &ThisClass::LookUp);
-	PlayerInputComponent->BindAxis("LookRight", this, &ThisClass::LookRight);
+	if (PlayerInputComponent)
+	{
+		PlayerInputComponent->BindAxis("MoveForward", this, &ThisClass::MoveForward);
+		PlayerInputComponent->BindAxis("MoveRight",   this, &ThisClass::MoveRight);
+		PlayerInputComponent->BindAxis("LookUp",      this, &ThisClass::LookUp);
+		PlayerInputComponent->BindAxis("LookRight",   this, &ThisClass::LookRight);
 
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ThisClass::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ThisClass::StopJumping);
-	PlayerInputComponent->BindAction("Use", IE_Pressed, this, &ThisClass::Use);
+		PlayerInputComponent->BindAction("Jump", IE_Pressed,  this, &ThisClass::Jump);
+		PlayerInputComponent->BindAction("Jump", IE_Released, this, &ThisClass::StopJumping);
+		PlayerInputComponent->BindAction("Use",  IE_Pressed,  this, &ThisClass::Use);
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////

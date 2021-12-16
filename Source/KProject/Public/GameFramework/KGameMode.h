@@ -4,16 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameMode.h"
+#include "GameFramework/PlayerRole.h"
 #include "KGameMode.generated.h"
 
-UENUM(BlueprintType)
-enum class EPlayerRole : uint8
-{
-	NotParticipating,
-	Traitor,
-	Innocent,
-	Detective,
-};
+DECLARE_LOG_CATEGORY_EXTERN(LogKGameMode, Log, All);
 
 /**
  * 
@@ -23,64 +17,108 @@ class KPROJECT_API AKGameMode : public AGameMode
 {
 	GENERATED_BODY()
 
+public:
+
 	AKGameMode(const FObjectInitializer& ObjectInitializer);
+
+	/////////////////////////////////////////////////////////////////////////
+	// Player roles
 
 protected:
 
-	UFUNCTION(BlueprintCallable, Category = "KGame")
-	virtual void RestartAllPlayers();
+	/* E.g., how many innocents are in the game? (Looks at every player each call.) */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+		virtual int32 GetRoleCount(EPlayerRole InRole) const;
 
-	UFUNCTION(BlueprintCallable, Category = "KGame")
-	virtual void DistributeRoles(int32 NumTraitors = 1, int32 NumDetectives = 0);
+	/* E.g., how many living innocents are in the game? (Looks at every player each call.) */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+		virtual int32 GetAliveRoleCount(EPlayerRole InRole) const;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "KGame")
-	TArray<int32> RoleCounts;
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+		virtual void SetPlayerRole(AController* Player, EPlayerRole NewRole);
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "KGame")
-	TArray<int32> AliveRoleCounts;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "KGameMode")
+		virtual EPlayerRole GetPlayerRole(AController* Player) const;
 
-	UFUNCTION(BlueprintCallable, Category = "KGame")
-	void SetPlayerRole(AController* Player, EPlayerRole NewRole);
+	/* Assign a role to each player in the game. */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+		virtual void DistributeRoles(int32 NumTraitors = 1, int32 NumDetectives = 0);
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "KGame")
-	EPlayerRole GetPlayerRole(AController* Player);
+	/////////////////////////////////////////////////////////////////////////
+	// Player participation
+
+	/* Calls RestartPlayer() on all players. */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+	    virtual void RestartAllPlayers();
+
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+		virtual void MakePlayerSpectate(AController* NewSpectator);
+
+	/////////////////////////////////////////////////////////////////////////
+	// Player deaths
 
 private:
 
+	/* If false players will respawn after death or be invulnerable. */
 	bool bArePlayersMortal;
 
 protected:
 
-	UFUNCTION(BlueprintCallable, Category = "KGame")
-	virtual void SetMortality(bool bAreMortal) { bArePlayersMortal = bAreMortal; }
+	/* If false players will respawn after death or be invulnerable. */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+	    virtual void SetArePlayersMortal(bool bAreMortal) { bArePlayersMortal = bAreMortal; }
 	
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "KGame")
-	virtual bool GetMortality() { return bArePlayersMortal; }
+	/* If false players will respawn after death or be invulnerable. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "KGameMode")
+	    virtual bool ArePlayersMortal() const { return bArePlayersMortal; }
 
 public:
 
-	UFUNCTION(BlueprintCallable, Category = "KGame")
-	void HandlePlayerDeath(AController* DeadPlayer);
+	/**
+	 * Do not call this to kill the player. Health and determination of death is handled elsewhere.
+	 * Call this after player is known to be dead.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+	    virtual void HandlePlayerDeath(AController* DeadPlayer);
+
+	/////////////////////////////////////////////////////////////////////////
+	// Match State
 
 protected:
 
-	UFUNCTION(BlueprintCallable, Category = "KGame")
-	void MakePlayerSpectate(AController* NewSpectator);
+	UFUNCTION(BlueprintImplementableEvent)
+		void OnHandleMatchIsWaitingToStart();
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "KGame")
-	FText EndMatchReason;
+	UFUNCTION(BlueprintImplementableEvent)
+		void OnHandleMatchHasStarted();
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "KGame")
-	bool bHaveTraitorsWon;
+	UFUNCTION(BlueprintImplementableEvent)
+		void OnHandleMatchHasEnded();
 
-	/* If true it will set EndMatchReason and bHaveTraitorsWon accordingly. */
-	UFUNCTION(BlueprintCallable, Category = "KGame")
-	bool ShouldEndMatch();
+	UFUNCTION(BlueprintImplementableEvent)
+		void OnHandleMatchAborted();
+
+	UFUNCTION(BlueprintImplementableEvent)
+		void OnRestartGame();
+
+	/////////////////////////////////////////////////////////////////////////
+	// Match end
+
+protected:
+	
+	/* Call this before EndMatch(). Called by ShouldEndMatch(). */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+	    virtual void SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon);
+
+	/* If true it will call SetEndMatchInfo() accordingly. */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+	    virtual bool ShouldEndMatch();
 
 public:
 
-	UFUNCTION(BlueprintCallable, Category = "KGame")
-	virtual void MyEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon);
+	/* Call this function instead of EndMatch() unless SetEndMatchInfo() was called manually. */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+	    virtual void NewEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon);
 
     //////////////////////////////////////////////////////////////////////
 	// Inherited stuff
@@ -88,13 +126,14 @@ public:
 public:
 
 	/* GameMode interface */
-	virtual void AbortMatch() override;
 	virtual void RestartGame() override;
 
 protected:
 
+	virtual void HandleMatchIsWaitingToStart() override;
 	virtual void HandleMatchHasStarted() override;
 	virtual void HandleMatchHasEnded() override;
+	virtual void HandleMatchAborted() override;
 	/* End GameMode interface */
 
 	/* GameModeBase interface */ /* End GameModeBase interface */

@@ -4,11 +4,22 @@
 #include "GameFramework/KPlayerState.h"
 #include "Net/UnrealNetwork.h"
 
+void AKPlayerState::OnRep_PlayerRole()
+{
+	PlayerRoleChanged.Broadcast(PlayerRole);
+}
+
+void AKPlayerState::SetPlayerRole(EPlayerRole NewRole)
+{
+	PlayerRole = NewRole;
+	OnRep_PlayerRole();
+}
+
 void AKPlayerState::Reset()
 {
 	Super::Reset();
 
-	PlayerRole = EPlayerRole::NotParticipating;
+	SetPlayerRole(EPlayerRole::NotParticipating);
 	bIsGhost = false;
 }
 
