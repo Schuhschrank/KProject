@@ -6,6 +6,8 @@
 #include "GameFramework/PlayerController.h"
 #include "KPlayerController.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FSomethingHappened);
+
 /**
  * 
  */
@@ -14,6 +16,20 @@ class KPROJECT_API AKPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
-	void OnRep_Pawn() override;
-	void SetPawn(APawn* InPawn) override;
+public:
+
+	/* Triggered by OnRep_PlayerState(). Only triggered on clients. */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category="KPlayerController")
+		FSomethingHappened OnRepPlayerState;
+
+	//////////////////////////////////////////////////////////////////////
+	// Inherited stuff
+
+public:
+
+	/* Controller interface */
+	virtual void OnRep_PlayerState() override;
+	virtual void OnRep_Pawn() override;
+	virtual void SetPawn(APawn* InPawn) override;
+	/* End Controller interface */
 };

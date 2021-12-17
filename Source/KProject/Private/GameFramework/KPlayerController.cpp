@@ -22,3 +22,10 @@ void AKPlayerController::OnRep_Pawn()
 		ChangeState(NAME_Spectating);
 	}
 }
+
+void AKPlayerController::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	OnRepPlayerState.Broadcast();
+}
