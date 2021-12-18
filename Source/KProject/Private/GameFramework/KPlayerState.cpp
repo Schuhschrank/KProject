@@ -12,7 +12,11 @@ void AKPlayerState::OnRep_PlayerRole()
 void AKPlayerState::SetPlayerRole(EPlayerRole NewRole)
 {
 	PlayerRole = NewRole;
-	OnRep_PlayerRole();
+	ForceNetUpdate();
+	if (HasAuthority())
+	{
+		OnRep_PlayerRole();
+	}
 }
 
 void AKPlayerState::Reset()
@@ -20,7 +24,7 @@ void AKPlayerState::Reset()
 	Super::Reset();
 
 	SetPlayerRole(EPlayerRole::NotParticipating);
-	bIsGhost = false;
+	SetIsGhost(false);
 }
 
 void AKPlayerState::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const

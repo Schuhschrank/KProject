@@ -4,22 +4,55 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameMode.h"
-#include "GameFramework/PlayerRole.h"
+#include "GameFramework/KEnums.h"
 #include "KGameMode.generated.h"
+
+USTRUCT(BlueprintType)
+struct FRoleCounts
+{
+	GENERATED_BODY()
+
+public:
+
+	FRoleCounts() : NotParticipating(0), Traitors(0), Innocents(0), Detectives(0) {}
+
+	UPROPERTY(BlueprintReadOnly)
+		int32 NotParticipating;
+
+	UPROPERTY(BlueprintReadOnly)
+		int32 Traitors;
+
+	UPROPERTY(BlueprintReadOnly)
+		int32 Innocents;
+
+	UPROPERTY(BlueprintReadOnly)
+		int32 Detectives;
+};
 
 DECLARE_LOG_CATEGORY_EXTERN(LogKGameMode, Log, All);
 
 /**
  * 
  */
-UCLASS()
+UCLASS(Abstract, CustomConstructor)
 class KPROJECT_API AKGameMode : public AGameMode
 {
 	GENERATED_BODY()
 
 public:
 
-	AKGameMode(const FObjectInitializer& ObjectInitializer);
+	AKGameMode(/* const FObjectInitializer& ObjectInitializer */);
+
+
+protected:
+
+	/** 
+	 * Returns a list of currently existing controllers.
+	 * Check validity for each item of the array before dereferencing.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+		TArray<AController*> GetAllPlayers() const;
+
 
 	/////////////////////////////////////////////////////////////////////////
 	// Player roles
@@ -33,6 +66,10 @@ protected:
 	/* E.g., how many living innocents are in the game? (Looks at every player each call.) */
 	UFUNCTION(BlueprintCallable, Category = "KGameMode")
 		virtual int32 GetAliveRoleCount(EPlayerRole InRole) const;
+
+	/* Returns the counts for all player roles. If bAlive is true only living players will be counted. */
+	UFUNCTION(BlueprintCallable, Category = "KGameMode")
+		virtual FRoleCounts GetRoleCounts(bool bAlive) const;
 
 	UFUNCTION(BlueprintCallable, Category = "KGameMode")
 		virtual void SetPlayerRole(AController* Player, EPlayerRole NewRole);
@@ -78,28 +115,8 @@ public:
 	 * Do not call this to kill the player. Health and determination of death is handled elsewhere.
 	 * Call this after player is known to be dead.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "KGameMode")
-	    virtual void HandlePlayerDeath(AController* DeadPlayer);
-
-	/////////////////////////////////////////////////////////////////////////
-	// Match State
-
-protected:
-
-	UFUNCTION(BlueprintImplementableEvent)
-		void OnHandleMatchIsWaitingToStart();
-
-	UFUNCTION(BlueprintImplementableEvent)
-		void OnHandleMatchHasStarted();
-
-	UFUNCTION(BlueprintImplementableEvent)
-		void OnHandleMatchHasEnded();
-
-	UFUNCTION(BlueprintImplementableEvent)
-		void OnHandleMatchAborted();
-
-	UFUNCTION(BlueprintImplementableEvent)
-		void OnRestartGame();
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "KGameMode")
+	    void HandlePlayerDeath(AController* DeadPlayer);
 
 	/////////////////////////////////////////////////////////////////////////
 	// Match end
@@ -111,8 +128,8 @@ protected:
 	    virtual void SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon);
 
 	/* If true it will call SetEndMatchInfo() accordingly. */
-	UFUNCTION(BlueprintCallable, Category = "KGameMode")
-	    virtual bool ShouldEndMatch();
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "KGameMode")
+	    bool ShouldEndMatch();
 
 public:
 

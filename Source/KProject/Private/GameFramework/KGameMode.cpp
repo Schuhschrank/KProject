@@ -15,8 +15,8 @@ constexpr auto StrInnocentsWon = "The Innocents have won! All Traitors are dead.
 constexpr auto StrTraitorsWon = "The Traitors have won! All Innocents and Detectives are dead.";
 constexpr auto StrMatchAborted = "The Match has been aborted.";
 
-AKGameMode::AKGameMode(const FObjectInitializer& ObjectInitializer)
-	: AGameMode(ObjectInitializer)
+AKGameMode::AKGameMode(/* const FObjectInitializer& ObjectInitializer */)
+	: AGameMode(/* ObjectInitializer */)
 {
 	// GameModeBase
 	PlayerControllerClass = AKPlayerController::StaticClass();
@@ -31,18 +31,29 @@ AKGameMode::AKGameMode(const FObjectInitializer& ObjectInitializer)
 	bArePlayersMortal = false;
 }
 
+TArray<AController*> AKGameMode::GetAllPlayers() const
+{
+	TArray<AController*> Result;
+	Result.Reserve(GetWorld() ? GetWorld()->GetNumControllers() : 1);
+
+	for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
+	{
+		if (auto Controller = It->Get())
+		{
+			Result.Add(Controller);
+		}
+	}
+	return Result;
+}
+
 void AKGameMode::HandleMatchIsWaitingToStart()
 {
 	Super::HandleMatchIsWaitingToStart();
-
-	OnHandleMatchIsWaitingToStart();
 }
 
 void AKGameMode::HandleMatchHasStarted()
 {
 	Super::HandleMatchHasStarted();
-
-	OnHandleMatchHasStarted();
 }
 
 void AKGameMode::SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
@@ -54,7 +65,7 @@ void AKGameMode::SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTrai
 	}
 }
 
-bool AKGameMode::ShouldEndMatch()
+bool AKGameMode::ShouldEndMatch_Implementation()
 {
 	if (!IsMatchInProgress())
 	{
@@ -80,10 +91,6 @@ bool AKGameMode::ShouldEndMatch()
 void AKGameMode::HandleMatchHasEnded()
 {
 	Super::HandleMatchHasEnded();
-
-	// GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::RestartGame);
-
-	OnHandleMatchHasEnded();
 }
 
 void AKGameMode::NewEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
@@ -94,11 +101,7 @@ void AKGameMode::NewEndMatch(const FText& InEndMatchReason, bool bInHaveTraitors
 
 void AKGameMode::HandleMatchAborted()
 {
-	SetEndMatchInfo(FText::FromString(FString(StrMatchAborted)), false);
-
-	// GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::RestartGame);
-
-	OnHandleMatchAborted();
+	Super::HandleMatchAborted();
 }
 
 void AKGameMode::RestartGame()
@@ -114,8 +117,6 @@ void AKGameMode::RestartGame()
 
 		// GetWorld()->ServerTravel("?Restart", GetTravelType());
 		ResetLevel();
-
-		OnRestartGame();
 	}
 }
 
@@ -170,7 +171,7 @@ void AKGameMode::DistributeRoles(int32 NumTraitors, int32 NumDetectives)
 	UE_LOG(LogKGameMode, Display, TEXT("Distributed roles."));
 }
 
-void AKGameMode::HandlePlayerDeath(AController* DeadPlayer)
+void AKGameMode::HandlePlayerDeath_Implementation(AController* DeadPlayer)
 {
 	if (!DeadPlayer)
 	{
@@ -179,7 +180,7 @@ void AKGameMode::HandlePlayerDeath(AController* DeadPlayer)
 
 	AKPlayerState* PS = Cast<AKPlayerState>(DeadPlayer->PlayerState);
 
-	if (PS && (PS->bIsGhost || PS->GetPlayerRole() == EPlayerRole::NotParticipating))
+	if (PS && (PS->IsGhost() || PS->GetPlayerRole() == EPlayerRole::NotParticipating))
 	{
 		// Player is already dead
 		return;
@@ -195,7 +196,7 @@ void AKGameMode::HandlePlayerDeath(AController* DeadPlayer)
 
 	if (PS)
 	{
-		PS->bIsGhost = true;
+		PS->SetIsGhost(true);
 	}
 
 	MakePlayerSpectate(DeadPlayer);
@@ -255,12 +256,12 @@ EPlayerRole AKGameMode::GetPlayerRole(AController* Player) const
 int32 AKGameMode::GetRoleCount(EPlayerRole InRole) const
 {
 	int32 Total = 0;
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
 	{
-		auto PS = Cast<AKPlayerState>(It->Get()->PlayerState);
-		if (PS && PS->GetPlayerRole() == InRole)
+		AController* Controller = It->Get();
+		if (Controller)
 		{
-			++Total;
+			Total += GetPlayerRole(Controller) == InRole ? 1 : 0;
 		}
 	}
 	return Total;
@@ -269,15 +270,58 @@ int32 AKGameMode::GetRoleCount(EPlayerRole InRole) const
 int32 AKGameMode::GetAliveRoleCount(EPlayerRole InRole) const
 {
 	int32 Total = 0;
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
 	{
-		auto PS = Cast<AKPlayerState>(It->Get()->PlayerState);
-		if (PS && PS->GetPlayerRole() == InRole && !PS->bIsGhost)
+		AController* Controller = It->Get();
+		if (Controller)
 		{
-			++Total;
+			bool bPlayerIsGhost = true;
+			if (auto PS = Controller->GetPlayerState<AKPlayerState>())
+			{
+				bPlayerIsGhost = PS->IsGhost();
+			}
+			Total += GetPlayerRole(Controller) == InRole && !bPlayerIsGhost ? 1 : 0;
 		}
 	}
 	return Total;
+}
+
+FRoleCounts AKGameMode::GetRoleCounts(bool bAlive) const
+{
+	FRoleCounts RoleCounts;
+	for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
+	{
+		AController* Controller = It->Get();
+		if (Controller)
+		{
+			bool bPlayerIsGhost = true;
+			if (auto PS = Controller->GetPlayerState<AKPlayerState>())
+			{
+				bPlayerIsGhost = PS->IsGhost();
+			}
+			if (!bPlayerIsGhost || !bAlive)
+			{
+				switch (GetPlayerRole(Controller))
+				{
+				case EPlayerRole::NotParticipating:
+					RoleCounts.NotParticipating += 1;
+					break;
+				case EPlayerRole::Traitor:
+					RoleCounts.Traitors += 1;
+					break;
+				case EPlayerRole::Innocent:
+					RoleCounts.Innocents += 1;
+					break;
+				case EPlayerRole::Detective:
+					RoleCounts.Detectives += 1;
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+	return RoleCounts;
 }
 
 void AKGameMode::Tick(float DeltaSeconds)

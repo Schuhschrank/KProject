@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 // #include "KGameMode.h"
-#include "GameFramework/PlayerRole.h"
+#include "GameFramework/KEnums.h"
 #include "KPlayerState.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPlayerRoleChanged, EPlayerRole, NewRole);
@@ -18,25 +18,44 @@ class KPROJECT_API AKPlayerState : public APlayerState
 {
 	GENERATED_BODY()
 
+	/////////////////////////////////////////////////////////////////////////
+	// Player role
+
+private:
+
+	UPROPERTY(ReplicatedUsing=OnRep_PlayerRole)
+	    EPlayerRole PlayerRole;
+
 protected:
 
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing=OnRep_PlayerRole)
-	EPlayerRole PlayerRole;
-
-	UFUNCTION()
-	virtual void OnRep_PlayerRole();
+	UFUNCTION(BlueprintCallable, Category = "KPlayerState")
+	    virtual void OnRep_PlayerRole();
 
 public:
 
-	void SetPlayerRole(EPlayerRole NewRole);
+	UFUNCTION(BlueprintCallable, Category = "KPlayerState")
+	    virtual void SetPlayerRole(EPlayerRole NewRole);
 
-	EPlayerRole GetPlayerRole() const { return PlayerRole; }
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "KPlayerState")
+		virtual EPlayerRole GetPlayerRole() const { return PlayerRole; }
 
-	UPROPERTY(BlueprintAssignable)
-	FPlayerRoleChanged PlayerRoleChanged;
+	UPROPERTY(BlueprintAssignable, Category = "KPlayerState")
+		FPlayerRoleChanged PlayerRoleChanged;
 
-	UPROPERTY(BlueprintReadOnly)
+	/////////////////////////////////////////////////////////////////////////
+	// Is ghost
+
+private:
+
 	bool bIsGhost;
+
+public:
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "KPlayerState")
+		virtual bool IsGhost() const { return bIsGhost; }
+
+	UFUNCTION(BlueprintCallable, Category = "KPlayerState")
+		virtual void SetIsGhost(bool bInIsGhost) { bIsGhost = bInIsGhost; }
 
 	//////////////////////////////////////////////////////////////////////
 	// Inherited stuff
