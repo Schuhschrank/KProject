@@ -124,8 +124,8 @@ public:
 protected:
 	
 	/* Call this before EndMatch(). Called by ShouldEndMatch(). */
-	UFUNCTION(BlueprintCallable, Category = "KGameMode")
-	    virtual void SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon);
+	//UFUNCTION(BlueprintCallable, Category = "KGameMode")
+	//    virtual void SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon);
 
 	/* If true it will call SetEndMatchInfo() accordingly. */
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "KGameMode")
@@ -134,8 +134,8 @@ protected:
 public:
 
 	/* Call this function instead of EndMatch() unless SetEndMatchInfo() was called manually. */
-	UFUNCTION(BlueprintCallable, Category = "KGameMode")
-	    virtual void NewEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon);
+	//UFUNCTION(BlueprintCallable, Category = "KGameMode")
+	//    virtual void NewEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon);
 
     //////////////////////////////////////////////////////////////////////
 	// Inherited stuff

@@ -11,17 +11,17 @@ void AKGameState::OnRep_MatchState()
 	OnMatchStateChanged();
 }
 
-void AKGameState::SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
-{
-	MulticastSetEndMatchInfo(InEndMatchReason, bInHaveTraitorsWon);
-}
-
-void AKGameState::MulticastSetEndMatchInfo_Implementation(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
-{
-	EndMatchReason = InEndMatchReason;
-	bHaveTraitorsWon = bInHaveTraitorsWon;
-	EndMatchInfoChanged.Broadcast(EndMatchReason, bHaveTraitorsWon);
-}
+//void AKGameState::SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
+//{
+//	MulticastSetEndMatchInfo(InEndMatchReason, bInHaveTraitorsWon);
+//}
+//
+//void AKGameState::MulticastSetEndMatchInfo_Implementation(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
+//{
+//	EndMatchReason = InEndMatchReason;
+//	bHaveTraitorsWon = bInHaveTraitorsWon;
+//	EndMatchInfoChanged.Broadcast(EndMatchReason, bHaveTraitorsWon);
+//}
 
 void AKGameState::Reset()
 {

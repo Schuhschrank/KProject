@@ -23,6 +23,7 @@ UENUM(BlueprintType)
 enum class EEndMatchReason : uint8
 {
 	NoReason,
+	EndedByHost,
 
 	/* All values greater than or equal to this and less than TraitorsWon mean Innocents won.  */
 	InnocentsWon,

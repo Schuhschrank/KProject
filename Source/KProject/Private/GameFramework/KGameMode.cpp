@@ -31,21 +31,6 @@ AKGameMode::AKGameMode(/* const FObjectInitializer& ObjectInitializer */)
 	bArePlayersMortal = false;
 }
 
-TArray<AController*> AKGameMode::GetAllPlayers() const
-{
-	TArray<AController*> Result;
-	Result.Reserve(GetWorld() ? GetWorld()->GetNumControllers() : 1);
-
-	for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
-	{
-		if (auto Controller = It->Get())
-		{
-			Result.Add(Controller);
-		}
-	}
-	return Result;
-}
-
 void AKGameMode::HandleMatchIsWaitingToStart()
 {
 	Super::HandleMatchIsWaitingToStart();
@@ -56,53 +41,53 @@ void AKGameMode::HandleMatchHasStarted()
 	Super::HandleMatchHasStarted();
 }
 
-void AKGameMode::SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
-{
-	auto GS = GetGameState<AKGameState>();
-	if (GS)
-	{
-		GS->SetEndMatchInfo(InEndMatchReason, bInHaveTraitorsWon);
-	}
-}
-
-bool AKGameMode::ShouldEndMatch_Implementation()
-{
-	if (!IsMatchInProgress())
-	{
-		return false;
-	}
-
-	if ( GetAliveRoleCount(EPlayerRole::Innocent) + GetAliveRoleCount(EPlayerRole::Detective) <= 0)
-	{
-		SetEndMatchInfo(FText::FromString(FString(StrTraitorsWon)), true);
-
-		return true;
-	}
-	else if (GetAliveRoleCount(EPlayerRole::Traitor) /* AliveRoleCounts[(int32)EPlayerRole::Traitor] */ <= 0)
-	{
-		SetEndMatchInfo(FText::FromString(FString(StrInnocentsWon)), false);
-
-		return true;
-	}
-
-	return false;
-}
-
 void AKGameMode::HandleMatchHasEnded()
 {
 	Super::HandleMatchHasEnded();
-}
-
-void AKGameMode::NewEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
-{
-	SetEndMatchInfo(InEndMatchReason, bInHaveTraitorsWon);
-	EndMatch();
 }
 
 void AKGameMode::HandleMatchAborted()
 {
 	Super::HandleMatchAborted();
 }
+
+//void AKGameMode::SetEndMatchInfo(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
+//{
+//	auto GS = GetGameState<AKGameState>();
+//	if (GS)
+//	{
+//		GS->SetEndMatchInfo(InEndMatchReason, bInHaveTraitorsWon);
+//	}
+//}
+
+bool AKGameMode::ShouldEndMatch_Implementation()
+{
+	//if (!IsMatchInProgress())
+	//{
+	//	return false;
+	//}
+
+	//if ( GetAliveRoleCount(EPlayerRole::Innocent) + GetAliveRoleCount(EPlayerRole::Detective) <= 0)
+	//{
+	//	SetEndMatchInfo(FText::FromString(FString(StrTraitorsWon)), true);
+
+	//	return true;
+	//}
+	//else if (GetAliveRoleCount(EPlayerRole::Traitor) /* AliveRoleCounts[(int32)EPlayerRole::Traitor] */ <= 0)
+	//{
+	//	SetEndMatchInfo(FText::FromString(FString(StrInnocentsWon)), false);
+
+	//	return true;
+	//}
+
+	return false;
+}
+
+//void AKGameMode::NewEndMatch(const FText& InEndMatchReason, bool bInHaveTraitorsWon)
+//{
+//	SetEndMatchInfo(InEndMatchReason, bInHaveTraitorsWon);
+//	EndMatch();
+//}
 
 void AKGameMode::RestartGame()
 {
@@ -322,6 +307,21 @@ FRoleCounts AKGameMode::GetRoleCounts(bool bAlive) const
 		}
 	}
 	return RoleCounts;
+}
+
+TArray<AController*> AKGameMode::GetAllPlayers() const
+{
+	TArray<AController*> Result;
+	Result.Reserve(GetWorld() ? GetWorld()->GetNumControllers() : 1);
+
+	for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
+	{
+		if (auto Controller = It->Get())
+		{
+			Result.Add(Controller);
+		}
+	}
+	return Result;
 }
 
 void AKGameMode::Tick(float DeltaSeconds)
