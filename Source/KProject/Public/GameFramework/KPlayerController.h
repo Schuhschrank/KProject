@@ -22,6 +22,9 @@ public:
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category="KPlayerController")
 		FSomethingHappened OnRepPlayerState;
 
+	UFUNCTION(BlueprintCallable, Category = "KPlayerController")
+		virtual void SetMouseSensitivity(const float NewSensitivity);
+
 	//////////////////////////////////////////////////////////////////////
 	// Inherited stuff
 

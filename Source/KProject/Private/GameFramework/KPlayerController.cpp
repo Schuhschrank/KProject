@@ -2,6 +2,7 @@
 
 
 #include "GameFramework/KPlayerController.h"
+#include "GameFramework/PlayerInput.h"
 
 void AKPlayerController::SetPawn(APawn* InPawn)
 {
@@ -28,4 +29,12 @@ void AKPlayerController::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 
 	OnRepPlayerState.Broadcast();
+}
+
+void AKPlayerController::SetMouseSensitivity(const float NewSensitivity)
+{
+	if (PlayerInput)
+	{
+		PlayerInput->SetMouseSensitivity(NewSensitivity);
+	}
 }
