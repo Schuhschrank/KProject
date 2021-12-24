@@ -8,20 +8,23 @@ void AKPlayerController::SetPawn(APawn* InPawn)
 {
 	Super::SetPawn(InPawn);
 
-	if (!GetPawn() && GetLocalRole() == ROLE_Authority)
-	{
-		ChangeState(NAME_Spectating);
-	}
+	OnSetPawn();
 }
 
 void AKPlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
 
-	if (!GetPawn() && GetLocalRole() != ROLE_Authority)
+	OnSetPawn();
+}
+
+void AKPlayerController::OnSetPawn()
+{
+	if (!GetPawn())
 	{
 		ChangeState(NAME_Spectating);
 	}
+	SetNewPawn.Broadcast();
 }
 
 void AKPlayerController::OnRep_PlayerState()

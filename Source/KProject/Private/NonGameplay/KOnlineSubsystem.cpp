@@ -3,8 +3,7 @@
 
 #include "NonGameplay/KOnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
-// #include "OnlineSubsystem.h"
-// #include "OnlineSessionSettings.h"
+#include "Engine/Engine.h"
 
 UKOnlineSubsystem::UKOnlineSubsystem()
 	: CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnCreateSessionCompleted))
@@ -14,8 +13,16 @@ UKOnlineSubsystem::UKOnlineSubsystem()
 	, DestroySessionCompleteDelegate(FOnDestroySessionCompleteDelegate::CreateUObject(this, &ThisClass::OnDestroySessionCompleted))
 	, FindSessionsCompleteDelegate(FOnFindSessionsCompleteDelegate::CreateUObject(this, &ThisClass::OnFindSessionsCompleted))
 	, JoinSessionCompleteDelegate(FOnJoinSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnJoinSessionCompleted))
-	// , OnFindFriendSessionCompleteDelegate(FOnFindFriendSessionCompleteDelegate::CreateUObject(this, ))
+	, OnFindFriendSessionCompleteDelegate(FOnFindFriendSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnFindFriendSessionCompleted))
 {
+	const IOnlineSessionPtr sessionInterface = Online::GetSessionInterface(GetWorld());
+	if (sessionInterface.IsValid())
+	{
+		FindFriendSessionCompleteDelegateHandle =
+			sessionInterface->AddOnFindFriendSessionCompleteDelegate_Handle(0, OnFindFriendSessionCompleteDelegate);
+		SessionUserInviteAcceptedDelegateHandle =
+			sessionInterface->AddOnSessionUserInviteAcceptedDelegate_Handle(OnSessionUserInviteAcceptedDelegate);
+	}
 }
 
 void UKOnlineSubsystem::CreateSession(int32 NumPublicConnections, bool IsLANMatch)
@@ -204,7 +211,7 @@ void UKOnlineSubsystem::FindSessions(int32 MaxSearchResults, bool IsLANQuery)
 	const IOnlineSessionPtr sessionInterface = Online::GetSessionInterface(GetWorld());
 	if (!sessionInterface.IsValid())
 	{
-		OnFindSessionsCompleteEvent.Broadcast(/*TArray<FOnlineSessionSearchResult>()*/ 0, false);
+		OnFindSessionsCompleteEvent.Broadcast(TArray<FOnlineSessionSearchResult>(), false);
 		return;
 	}
 
@@ -222,7 +229,7 @@ void UKOnlineSubsystem::FindSessions(int32 MaxSearchResults, bool IsLANQuery)
 	{
 		sessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsCompleteDelegateHandle);
 
-		OnFindSessionsCompleteEvent.Broadcast(/*TArray<FOnlineSessionSearchResult>()*/ 0, false);
+		OnFindSessionsCompleteEvent.Broadcast(TArray<FOnlineSessionSearchResult>(), false);
 	}
 }
 
@@ -236,23 +243,21 @@ void UKOnlineSubsystem::OnFindSessionsCompleted(bool Successful)
 
 	if (LastSessionSearch->SearchResults.Num() <= 0)
 	{
-		OnFindSessionsCompleteEvent.Broadcast(/*TArray<FOnlineSessionSearchResult>()*/ 0, Successful);
+		OnFindSessionsCompleteEvent.Broadcast(TArray<FOnlineSessionSearchResult>(), Successful);
 		return;
 	}
 
-	OnFindSessionsCompleteEvent.Broadcast(LastSessionSearch->SearchResults.Num(), Successful);
+	OnFindSessionsCompleteEvent.Broadcast(LastSessionSearch->SearchResults, Successful);
 }
 
-void UKOnlineSubsystem::JoinGameSession(/*const FOnlineSessionSearchResult& SessionResult*/ int32 Index)
+void UKOnlineSubsystem::JoinSession(const FOnlineSessionSearchResult& SessionResult)
 {
 	const IOnlineSessionPtr sessionInterface = Online::GetSessionInterface(GetWorld());
-	if (!sessionInterface.IsValid() || !LastSessionSearch->SearchResults.IsValidIndex(Index))
+	if (!sessionInterface.IsValid())
 	{
-		OnJoinGameSessionCompleteEvent.Broadcast((int32)EOnJoinSessionCompleteResult::UnknownError);
+		OnJoinGameSessionCompleteEvent.Broadcast(EOnJoinSessionCompleteResult::UnknownError);
 		return;
 	}
-
-	const FOnlineSessionSearchResult& SessionResult = LastSessionSearch->SearchResults[Index];
 
 	JoinSessionCompleteDelegateHandle =
 		sessionInterface->AddOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegate);
@@ -262,7 +267,7 @@ void UKOnlineSubsystem::JoinGameSession(/*const FOnlineSessionSearchResult& Sess
 	{
 		sessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegateHandle);
 
-		OnJoinGameSessionCompleteEvent.Broadcast((int32)EOnJoinSessionCompleteResult::UnknownError);
+		OnJoinGameSessionCompleteEvent.Broadcast(EOnJoinSessionCompleteResult::UnknownError);
 	}
 }
 
@@ -274,7 +279,12 @@ void UKOnlineSubsystem::OnJoinSessionCompleted(FName SessionName, EOnJoinSession
 		sessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegateHandle);
 	}
 
-	OnJoinGameSessionCompleteEvent.Broadcast((int32)Result);
+	OnJoinGameSessionCompleteEvent.Broadcast(Result);
+
+	if (Result == EOnJoinSessionCompleteResult::Success)
+	{
+		TryTravelToCurrentSession();
+	}
 }
 
 bool UKOnlineSubsystem::TryTravelToCurrentSession()
@@ -296,11 +306,33 @@ bool UKOnlineSubsystem::TryTravelToCurrentSession()
 	return true;
 }
 
-FString UKOnlineSubsystem::GetSearchResultOwningUserName(int32 Index)
+void UKOnlineSubsystem::OnFindFriendSessionCompleted(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& SearchResult)
 {
-	if (LastSessionSearch->SearchResults.IsValidIndex(Index))
+	/*if (bWasSuccessful && SearchResult.IsValidIndex(0))
 	{
-		return LastSessionSearch->SearchResults[Index].Session.OwningUserName;
-	}
-	return FString("Invalid Index!");
+		const IOnlineSessionPtr sessionInterface = Online::GetSessionInterface(GetWorld());
+		if (!sessionInterface.IsValid())
+		{
+			OnJoinGameSessionCompleteEvent.Broadcast((int32)EOnJoinSessionCompleteResult::UnknownError);
+			return;
+		}
+
+		const FOnlineSessionSearchResult& SessionResult = SearchResult[0];
+
+		JoinSessionCompleteDelegateHandle =
+			sessionInterface->AddOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegate);
+
+		if (!sessionInterface->JoinSession(LocalUserNum, NAME_GameSession, SessionResult))
+		{
+			sessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegateHandle);
+
+			OnJoinGameSessionCompleteEvent.Broadcast((int32)EOnJoinSessionCompleteResult::UnknownError);
+		}
+	}*/
+	GEngine->AddOnScreenDebugMessage(0, 5, FColor::Green, TEXT("OnFindFriendSessionCompleted"));
+}
+
+void UKOnlineSubsystem::OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)
+{
+	JoinSession(InviteResult);
 }

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSessionSettings.h"
 #include "KOnlineSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCSOnCreateSessionComplete, bool, Successful);
@@ -12,10 +13,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCSOnUpdateSessionComplete, bool, Su
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCSOnStartSessionComplete, bool, Successful);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCSOnEndSessionComplete, bool, Successful);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCSOnDestroySessionComplete, bool, Successful);
-// DECLARE_MULTICAST_DELEGATE_TwoParams(FCSOnFindSessionsComplete, const TArray<FOnlineSessionSearchResult>& SessionResults, bool Successful); 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCSOnFindSessionsComplete, int32, NumResults, bool, Successful);
-// DECLARE_MULTICAST_DELEGATE_OneParam(FCSOnJoinSessionComplete, EOnJoinSessionCompleteResult::Type Result);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCSOnJoinSessionComplete, int32, Result);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FCSOnFindSessionsComplete, const TArray<FOnlineSessionSearchResult>& SessionResults, bool Successful); 
+// DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCSOnFindSessionsComplete, int32, NumResults, bool, Successful);
+DECLARE_MULTICAST_DELEGATE_OneParam(FCSOnJoinSessionComplete, EOnJoinSessionCompleteResult::Type Result);
+// DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCSOnJoinSessionComplete, int32, Result);
 
 /**
  * 
@@ -47,8 +48,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void FindSessions(int32 MaxSearchResults, bool IsLANQuery);
 
-	UFUNCTION(BlueprintCallable)
-	void JoinGameSession(/*const FOnlineSessionSearchResult& SessionResult*/ int32 Index);
+	// UFUNCTION(BlueprintCallable)
+	void JoinSession(const FOnlineSessionSearchResult& SessionResult);
 
 	UPROPERTY(BlueprintAssignable)
 	FCSOnCreateSessionComplete OnCreateSessionCompleteEvent;
@@ -65,14 +66,11 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FCSOnDestroySessionComplete OnDestroySessionCompleteEvent;
 
-	UPROPERTY(BlueprintAssignable)
+	// UPROPERTY(BlueprintAssignable)
 	FCSOnFindSessionsComplete OnFindSessionsCompleteEvent;
 
-	UPROPERTY(BlueprintAssignable)
+	// UPROPERTY(BlueprintAssignable)
 	FCSOnJoinSessionComplete OnJoinGameSessionCompleteEvent;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure)
-	FString GetSearchResultOwningUserName(int32 Index);
 
 protected:
 
@@ -83,7 +81,8 @@ protected:
 	void OnDestroySessionCompleted(FName SessionName, bool Successful);
 	void OnFindSessionsCompleted(bool Successful);
 	void OnJoinSessionCompleted(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
-	// void OnFindFriendSessionCompleted();
+	void OnFindFriendSessionCompleted(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& SearchResult);
+	void OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
 public:
 
@@ -115,5 +114,9 @@ private:
 	FOnJoinSessionCompleteDelegate JoinSessionCompleteDelegate;
 	FDelegateHandle JoinSessionCompleteDelegateHandle;
 
-	// FOnFindFriendSessionCompleteDelegate OnFindFriendSessionCompleteDelegate;
+	FOnFindFriendSessionCompleteDelegate OnFindFriendSessionCompleteDelegate;
+	FDelegateHandle FindFriendSessionCompleteDelegateHandle;
+
+	FOnSessionUserInviteAcceptedDelegate OnSessionUserInviteAcceptedDelegate;
+	FDelegateHandle SessionUserInviteAcceptedDelegateHandle;
 };

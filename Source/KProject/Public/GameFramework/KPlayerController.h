@@ -22,6 +22,11 @@ public:
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category="KPlayerController")
 		FSomethingHappened OnRepPlayerState;
 
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "KPlayerController")
+		FSomethingHappened SetNewPawn;
+
+	virtual void OnSetPawn();
+
 	UFUNCTION(BlueprintCallable, Category = "KPlayerController")
 		virtual void SetMouseSensitivity(const float NewSensitivity);
 
