@@ -35,9 +35,12 @@ public:
 
 public:
 
-	/* Controller interface */
+	// PlayerController interface begin
+	// PlayerController interface end
+
+	// Controller interface begin
 	virtual void OnRep_PlayerState() override;
 	virtual void OnRep_Pawn() override;
 	virtual void SetPawn(APawn* InPawn) override;
-	/* End Controller interface */
+	// Controller interface end
 };

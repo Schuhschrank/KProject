@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,21 +5,43 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "KGameInstance.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogKGameInstance, Log, All);
+
 /**
- * 
+ * Handles session creation and joining, joining accepted invites and disconnecting when returning to menu.
  */
 UCLASS()
 class KPROJECT_API UKGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 
+public:
+
+	/** Returns true if delegate will be fired, false otherwise (if there was an error). */
+	UFUNCTION(BlueprintCallable)
+	bool CreateSession();
+
 protected:
+
+	/** If successful open a level with the listen option. */
+	UFUNCTION(BlueprintImplementableEvent)
+	void ReceiveOnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
+
+private:
+
+	FOnCreateSessionCompleteDelegate OnCreateSessionCompleteDelegate;
+	FDelegateHandle OnCreateSessionCompleteDelegateHandle;
+	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);;
 
 	FOnJoinSessionCompleteDelegate OnJoinSessionCompleteDelegate;
 	FDelegateHandle OnJoinSessionCompleteDelegateHandle;
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
 
-	// UGameInstance interface begin
+	FOnFindFriendSessionCompleteDelegate OnFindFriendSessionCompleteDelegate;
+	FDelegateHandle OnFindFriendSessionCompleteDelegateHandle;
+	void OnFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& SearchResult);
+
+	// GameInstance interface begin
 
 public:
 
@@ -38,6 +58,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void ReturnToMainMenu() override;
 
-	// UGameInstance interface end
+	// GameInstance interface end
 	
 };
