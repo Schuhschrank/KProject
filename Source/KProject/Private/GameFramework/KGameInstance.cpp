@@ -57,7 +57,7 @@ void UKGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSessionComp
 	}
 }
 
-bool UKGameInstance::CreateSession()
+bool UKGameInstance::CreateSession(int InNumPublicConnections, bool bInAllowInvites, bool bInAllowJoinViaPresence, bool bInUseLobbiesVoiceChatIfAvailable, int Filter)
 {
 	auto SessionInt = Online::GetSessionInterface();
 	if (SessionInt.IsValid())
@@ -65,16 +65,18 @@ bool UKGameInstance::CreateSession()
 		OnCreateSessionCompleteDelegateHandle = SessionInt->AddOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteDelegate);
 
 		FOnlineSessionSettings Settings;
-		Settings.bAllowInvites = true;
+		Settings.bAllowInvites = bInAllowInvites;
 		Settings.bAllowJoinInProgress = true;
-		Settings.bAllowJoinViaPresence = true;
+		Settings.bAllowJoinViaPresence = bInAllowJoinViaPresence;
 		Settings.bShouldAdvertise = true;		// true otherwise cannot invite friends
 		Settings.bUseLobbiesIfAvailable = true; // true to set up lobby
 		Settings.bUsesPresence = true;			// true to set up lobby
-		Settings.NumPublicConnections = 20;
+		Settings.NumPublicConnections = InNumPublicConnections;
+
+		Settings.bUseLobbiesVoiceChatIfAvailable = bInUseLobbiesVoiceChatIfAvailable;
 
 		// Temporary setting for filtering
-		Settings.Set(SETTING_CUSTOMSEARCHINT1, 123456789, EOnlineDataAdvertisementType::ViaOnlineService);
+		Settings.Set(SETTING_CUSTOMSEARCHINT1, Filter, EOnlineDataAdvertisementType::ViaOnlineService);
 
 		return SessionInt->CreateSession(0, NAME_GameSession, Settings);
 	}
@@ -98,7 +100,7 @@ void UKGameInstance::OnFindFriendSessionComplete(int32 LocalUserNum, bool bWasSu
 {
 	UE_LOG(LogKGameInstance, Display, TEXT("OnFindFriendSessionComplete with result %s."), bWasSuccessful ? TEXT("true") : TEXT("false"));
 
-	if (bWasSuccessful && SearchResult.IsValidIndex(0))
+	if (bWasSuccessful && SearchResult.IsValidIndex(0) && SearchResult[0].IsValid())
 	{
 		if (!JoinSession(GetLocalPlayerByIndex(LocalUserNum), SearchResult[0]))
 		{

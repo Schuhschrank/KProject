@@ -19,7 +19,7 @@ public:
 
 	/** Returns true if delegate will be fired, false otherwise (if there was an error). */
 	UFUNCTION(BlueprintCallable)
-	bool CreateSession();
+	bool CreateSession(int InNumPublicConnections = 20, bool bInAllowInvites = true, bool bInAllowJoinViaPresence = true, bool bInUseLobbiesVoiceChatIfAvailable = true, int Filter = 123456789);
 
 protected:
 
